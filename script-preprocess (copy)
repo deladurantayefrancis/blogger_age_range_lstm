@@ -1,0 +1,381 @@
+#!/bin/bash
+
+dataset=$1
+
+folder="patterns"
+mkdir -p $folder
+
+lines=100000
+result="$(cat ./data/data_${dataset}.txt | head -n ${lines})"
+
+# allows usage of '!' in perl regex search (for negative lookbehind and lookahead)
+set +H
+
+
+##########################
+# START OF PREPROCESSING #
+##########################
+
+
+# add starting/ending quotes to blog entries that do not have them
+result="$(echo "${result}" | cat | perl -pe "s/^(?!\")(.*)(,[0-2])/\" \1 \" \2 /g")"
+
+
+if true; then
+    # replaces pairs of parenthesis, brackets and braces with tokens
+    search="\(([^\(\)]+)\)"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/leftright.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ LEFTPARENTHESIS \1 RIGHTPARENTHESIS /g")"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/leftright.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ LEFTPARENTHESIS \1 RIGHTPARENTHESIS /g")"
+
+    search="\(([^\[\]]+)\)"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/leftright.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ LEFTBRACKET \1 RIGHTBRACKET /g")"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/leftright.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ LEFTBRACKET \1 RIGHTBRACKET /g")"
+
+    search="\(([^\{\}]+)\)"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/leftright.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ LEFTBRACE \1 RIGHTBRACE /g")"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/leftright.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ LEFTBRACE \1 RIGHTBRACE /g")"
+
+    >&2 echo "--> LEFTRIGHT ended successfully"
+fi
+
+
+if true; then
+    # replaces lengths with LENGTH token
+    # PROBLEM HERE vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+    #search="\b[0-9]+([\.,][0-9]+)*(mm|cm|m|km|ft|mil)\b|[0-9]\' ?[0-9]{1,2}(\"\"|\'\')"
+    search="\b[0-9]+\' ?[0-9]{1,2}(\"\"|\'\')"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/lengths.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ LENGTH /g")"
+    >&2 echo "--> LENGTHS ended successfully"
+fi
+
+# replaces double quotes while preserving starting/ending quotes of the blogs
+result="$(echo "${result}" | cat | perl -pe "s/(?<=^\")\"\"/ QUOTES /g")"
+result="$(echo "${result}" | cat | perl -pe "s/\"\"/ QUOTES /g")"
+
+
+if true; then
+    # replaces email addresses with EMAIL token
+    search="[a-z0-9\.\'_-]+@[a-z0-9\._-]+\.(au|ca|uk|ru|us|com|net|edu|org|info|gov)"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/email.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ EMAIL /g")"
+    >&2 echo "--> EMAIL ended successfully"
+fi
+
+
+if true; then
+    # to avoid having more than 3 repetitions of a character
+    search="([^0-9])\1{3,}"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/repeated_chars.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\1\1\1/g")"
+    >&2 echo "--> REPEATED_CHARS ended successfully"
+fi
+
+
+if true; then
+    # replaces repeated dots with DOTS token
+    search="\.{2,}"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/dots.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ DOTS /g")"
+    >&2 echo "--> DOTS ended successfully"
+fi
+
+
+if true; then
+    # replaces group of exclamation and question marks with QUESTIONEXCLAM token
+    search="(\!+\?+|\?+\!+)(\!|\?)*"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/question_exclams.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ QUESTIONEXCLAM /g")"
+    >&2 echo "--> QUESTIONEXCLAM ended successfully"
+fi
+
+
+if true; then
+    # replaces repeated question marks with STRONGQUESTION token
+    search="\?{2,}"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/questions.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ STRONGQUESTION /g")"
+    >&2 echo "--> STRONGQUESTION ended successfully"
+fi
+
+
+if true; then
+    # replaces repeated exclamation marks with STRONGEXCLAM token
+    search="\!{2,}"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/exclams.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ STRONGEXCLAM /g")"
+    >&2 echo "--> STRONGEXCLAM ended successfully"
+fi
+
+
+if true; then
+    # replaces times with TIME token
+    search="(0?[0-9]|1[0-9]|2[0-3])([:h][0-6][0-9]| ?[ap]\.?m(?![a-z])){1,3}"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/times.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ TIME /g")"
+    >&2 echo "--> TIME ended successfully"
+fi
+
+
+if true; then
+    # replaces days of the week with DAY token
+    search="(monday|tuesday|wednesday|thursday|friday|saturday|sunday)"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/days.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/DAY/g")"
+    >&2 echo "--> DAY ended successfully"
+fi
+
+
+if true; then
+    # replaces months with MONTH token (except "may" for obvious reasons)
+    search="(january|february|march(?![a-z])|april|june|july|august|september|october|november|december)"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/months.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/MONTH/g")"
+
+    # replaces abbreviated months with MONTH token (except "may" for obvious reasons)
+    search="(?<![a-z])(jan|feb|mar|apr|jun|jul|aug|sep[t]?|oct|nov|dec)(?![a-z])"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/months.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/MONTH/g")"
+
+    >&2 echo "--> MONTH ended successfully"
+fi
+
+
+if true; then
+    # replaces dates with DATE token
+    search="(MONTH|may)(([, ]|, )((of )?[0-9]{3,4}|[0-9]{1,2}(r?st|nd|rd|th)?)){1,2}"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/dates.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/DATE/g")"
+    >&2 echo "--> DATE ended successfully"
+fi
+
+
+if true; then
+    # replaces laughs with LAUGHS token
+    search="(?:m?[wu]{0,2}a?h([aeiou])h+\1+(h|\1)*[sxz]*)+"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/laughs.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ LAUGHS /g")"
+    >&2 echo "--> LAUGHS ended successfully"
+fi
+
+
+if false; then
+    if true; then
+        # replaces ordinals numbers with ORDINAL token
+        search="[0-9]+(r?st|nd|rd|th)"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/ordinals.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/ ORDINAL /g")"
+        >&2 echo "--> ORDINALS ended successfully"
+    fi
+
+
+    if true; then
+        # replaces weights with WEIGHT token
+        search="\b[0-9]+([\.,][0-9]+)*(mg|g|kg|lbs?|kb)\b"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/weights.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/ WEIGHT /g")"
+        >&2 echo "--> WEIGHTS ended successfully"
+    fi
+
+
+    if true; then
+        # replaces durations with DURATION token
+        search="\b[0-9]+([\.,][0-9]+)*(ms|mins?|hours?|hrs?|days?|mo(nths?)?|yrs?)\b"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/durations.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/ DURATION /g")"
+        >&2 echo "--> DURATIONS ended successfully"
+    fi
+
+
+    if true; then
+        # replaces digital units with DIGITALUNIT token
+        search="\b[0-9]+([\.,][0-9]+)*(bit|kb|mb|gb|gig|tb)\b"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/digital_units.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/ DIGITALUNIT /g")"
+        >&2 echo "--> DIGITALUNITS ended successfully"
+    fi
+
+
+    if true; then
+        # replaces money quantities with MONEY token
+        search='[0-9]+([\.,][0-9]+)*\$|\$[0-9]+([\.,][0-9]+)*'
+        echo "${result}" | grep -E -o "[^ ]*${search}[^ ]*" > $folder/money.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/ MONEY /g")"
+        >&2 echo "--> MONEY ended successfully"
+    fi
+fi
+
+
+if true; then
+    # separates "to have" related contractions
+    search="\b(i|you|we|they|would|should|could|might|must|who)[';]ve\b"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/to_have.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 have/g")"
+    >&2 echo "--> TO_HAVE ended successfully"
+fi
+
+
+if true; then
+    # separates "to be" related contractions
+    search="\bi[';]m"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/to_be.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/i m/g")"
+    #result="$(echo "${result}" | cat | perl -pe "s/${search}/i am/g")"
+    
+    search="\b(you|we|they)[';]re"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/to_be.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 re/g")"
+    #result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 are/g")"
+
+    search="\b(it|that|he|she|there|what|let|here|who)[';]s"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/to_be.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 s/g")"
+    #result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 is/g")"
+
+    >&2 echo "--> TO_BE ended successfully"
+fi
+
+
+if true; then
+    # separates other common contractions
+    search="\b(i|you|he|she|we|they|it|that|there|how|where|who|what|why)[';]d"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/contractions.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 d/g")"
+    #result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 would/g")"
+
+    search="\b(i|you|he|she|we|they|it|that|there|this|who)[';]ll"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 ll/g")"
+    #result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 will/g")"
+
+    search="\b(do|did|does|has|have|had|is|are|was|were|could|would|should|must)n[';]t"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\1n t/g")"
+    #result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 not/g")"
+
+    search="\bcan[';]t"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\can t/g")"
+    #result="$(echo "${result}" | cat | perl -pe "s/${search}/\can not/g")"
+
+    search="\bwon[';]t"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\won t/g")"
+    #result="$(echo "${result}" | cat | perl -pe "s/${search}/\will not/g")"
+
+    search="\bain[';]t"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\ain t/g")"
+    #result="$(echo "${result}" | cat | perl -pe "s/${search}/\am not/g")"
+
+    search="\bhavn[';]t"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\havn t/g")"
+    #result="$(echo "${result}" | cat | perl -pe "s/${search}/\have not/g")"
+
+    >&2 echo "--> CONTRACTIONS ended successfully"
+fi
+
+
+if true; then
+    # separates possession marks from words
+    search="[';]s\b"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/possessions.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ POSSESSION /g")"
+
+    >&2 echo "--> POSSESSIONS ended successfully"
+fi
+
+
+if true; then
+    # common alternate spellings
+    search="w(o*0+)t"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/alternates.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/WOOT/g")"
+
+    search="1ce"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ONCE/g")"
+
+    search="2dae"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/TODAY/g")"
+
+    search="sk8ter"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/SKATER/g")"
+
+    search="l8r"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/LATER/g")"
+
+    search="\b[b']?(c[ou]z)\b"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/BECAUSE/g")"
+
+    search="\b2(day|gether|morrow|moro|night|nite)"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/TO\U\1/g")"
+
+    search="\b4(bid|ever|get|got|ward)"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/FOR\U\1/g")"
+
+    >&2 echo "--> ALTERNATES ended successfully"
+fi
+
+
+if true; then
+    # replaces smileys with SMILEYsomething token
+    search="[:;][\-\^\'o]?([^[:space:]\'\"\>\-_\.:;0-9a-z]|[opds])(?![a-z0-9])"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/smileys.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/ SMILEY\1 /g")"
+    >&2 echo "--> SMILEYS ended successfully"
+fi
+
+
+if true; then
+    # shorten repeated sequence of characters (not including spaces) to two repetitions
+    search="([^ ]{2,})\1{2,}"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/repeated_seqs.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\1\1/g")"
+
+    search="([a-z0-9])\1*(?!\1)([a-z0-9])\2*(\1+\2+){2,}(\1|\2)*"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/repeated_seqs.txt
+    result="$(echo "${result}" | cat | perl -pe "s/${search}/\1\2\1\2/g")"
+
+    >&2 echo "--> REPEATED_SEQS ended successfully"
+fi
+
+
+if true; then
+    # replaces numbers with NUMBER token
+    search="\b(?<!,)[\+\-]?[0-9]+([\.,][0-9]+)*(\/[0-9]+([\.,][0-9]+)*)?"
+    echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/numbers.txt
+    result="$(echo "${result}" | cat | perl -ple "s/${search}/ NUMBER /g")"
+    >&2 echo "--> NUMBERS ended successfully"
+fi
+
+
+# adds spaces around punctuations
+result="$(echo "${result}" | cat | perl -pe "s/(?!SMILEY)([[:punct:]])/ \1 /g")"
+
+# removes extra spaces
+result="$(echo "${result}" | cat | perl -pe "s/ +/ /g")"
+result="$(echo "${result}" | cat | perl -pe "s/^ //g")"
+result="$(echo "${result}" | cat | perl -pe "s/\" /\"/g")"
+result="$(echo "${result}" | cat | perl -pe "s/\", ([0-2])/\"\,\1/g")"
+
+
+########################
+# END OF PREPROCESSING #
+########################
+
+# output to file
+cat > ./out/data_${dataset}.out

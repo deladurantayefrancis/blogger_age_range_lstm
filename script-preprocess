@@ -1,0 +1,315 @@
+#!/bin/bash
+
+dataset=$1
+lines=$2
+
+set +H
+
+months="(january|february|march(?![a-z])|april|june|july|august|september|october|november|december)"
+
+cat ./data/data_${dataset}.txt |\
+    head -n $lines |\
+    
+    # quotes
+    #perl -pe '(?<![a-z])\x27([^\x27]+)\x27(?![a-z])/ QUOTES \1 QUOTES /g' |\
+    perl -pe 's/\"([^\"]+)\"/ QUOTES \1 QUOTES /g' |\
+
+    # masked fucks
+    perl -pe "s/f[\*u][\*c][\*k]/fuck/g" |\
+    perl -pe "s/f[[:punct:]]{3}/fuck/g" |\
+
+    # email adresses
+    perl -pe "s/[a-z0-9\.\'_-]+@[a-z0-9\._-]+\.[a-z]{2,4}/EMAIL/g" |\
+
+    # set maximum of three repetitions for every unique character
+    perl -pe "s/([^0-9])\1{3,}/\1\1\1/g" |\
+
+    # related to dots tokens
+    perl -pe "s/\.{2,}/ DOTS /g" |\
+    perl -pe "s/(\!+\?+|\?+\!+)(\!|\?)*/ QUESTIONEXCLAM /g" |\
+    perl -pe "s/\?{2,}/ STRONGQUESTION /g" |\
+    perl -pe "s/\!{2,}/ STRONGEXCLAM /g" |\
+
+    # related to time tokens
+    perl -pe "s/(0?[0-9]|1[0-9]|2[0-3])([:h][0-6][0-9]| ?[ap]\.?m(?![a-z])){1,3}/ TIME /g" |\
+    perl -pe "s/(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/DAY/g" |\
+    perl -pe "s/${months}/MONTH/g" |\
+    perl -pe "s/(?<![a-z])(jan|feb|mar|apr|jun|jul|aug|sep[t]?|oct|nov|dec)(?![a-z])/MONTH/g" |\
+    perl -pe "s/(MONTH|may)(([, ]|, )((of )?[0-9]{3,4}|[0-9]{1,2}(r?st|nd|rd|th)?)){1,2}/DATE/g" |\
+    perl -pe "s/DAY, (MONTH|may) [0-9]{1,2}/DATE/g" |\
+    perl -pe "s/(?:m?[wu]{0,2}a?h([aeiou])h+\1+(h|\1)*[sxz]*)+/ LAUGHS /g" |\
+
+    # parenthesis, brackets and braces pairs
+    perl -pe "s/\(([^\(\)]+)\)/ \( \1 \) /g" |\
+    perl -pe "s/\(([^\(\)]+)\)/ \( \1 \) /g" |\
+    perl -pe "s/\[([^\[\]]+)\]/ \[ \1 \] /g" |\
+    perl -pe "s/\[([^\[\]]+)\]/ \[ \1 \] /g" |\
+    perl -pe "s/\{([^\{\}]+)\}/ \{ \1 \} /g" |\
+    perl -pe "s/\{([^\{\}]+)\}/ \{ \1 \} /g" |\
+
+    # smileys
+    perl -pe "s/[:;][\-\^\'o]?([^[:space:]\'\"\>\-_\.:;0-9a-z]|[opds])(?![a-z0-9])/ SMILEY\1 /g" |\
+    perl -pe "s/\^[[:punct:]]?\^/ HAPPY /g" |\
+    perl -pe "s/\~_\^/ EYEBROW /g" |\
+    perl -pe "s/([[:punct:]])[\.\_\-]\1/ EYE\1 /g" |\
+    perl -pe "s/[\-\~]+>|>{2,}/ ARROW /g" |\
+    perl -pe "s/([\-\*\_\~\=\,\;\']){2,}/ \1 /g" |\
+
+    # repeated sequences of alternating chars
+    perl -pe "s/([^\s]{2,})\1{2,}/\1\1/g" |\
+    perl -pe "s/([a-z0-9])\1*(?!\1)([a-z0-9])\2*(\1+\2+){2,}(\1|\2)*/\1\2\1\2/g" |\
+
+    # urls and images
+    perl -pe "s/www\.[a-z0-9\.\_\-]+/ urllink /g" |\
+    perl -pe "s/[a-z0-9\.\_\-]+\.(com|org)/ urllink /g" |\
+    perl -pe "s/[a-z0-9\.\_\-]+\.jpe?g/ IMAGE /g" |\
+
+    # common abbreviations
+    perl -pe "s/[^a-z]a\.j\.?/ AJ /gi" |\
+    perl -pe "s/[^a-z]a\.k\.a\.?/ AKA /gi" |\
+    perl -pe "s/[^a-z]b\.c\.?/ BC /gi" |\
+    perl -pe "s/[^a-z]b\.net/ BNET /gi" |\
+    perl -pe "s/[^a-z]b\.s\.?/ BS /gi" |\
+    perl -pe "s/[^a-z]cnn\.com/ CNN /gi" |\
+    perl -pe "s/[^a-z]d\.va\.?/ DIVA /gi" |\
+    perl -pe "s/[^a-z]d\.c\.?/ DC /gi" |\
+    perl -pe "s/[^a-z]e\.g[\.,\-:\s]*/ EG , /gi" |\
+    perl -pe "s/[^a-z]e\.p\.?/ EP /gi" |\
+    perl -pe "s/[^a-z]e\.u\.?/ EU /gi" |\
+    perl -pe "s/[^a-z]f\.y\.i\.?/ FYI /gi" |\
+    perl -pe "s/[^a-z]i\.e[\.,\-:\s]*/ IE , /gi" |\
+    perl -pe "s/[^a-z]i\.q\.?/ IQ /gi" |\
+    perl -pe "s/[^a-z]j\.p\.?/ JP /gi" |\
+    perl -pe "s/[^a-z]l\.a\.?/ LA /gi" |\
+    perl -pe "s/[^a-z]m\.i\.a\.?/ MIA /gi" |\
+    perl -pe "s/[^a-z]n\.f\.l\.?/ NFL /gi" |\
+    perl -pe "s/[^a-z]o\.g\.?/ OG /gi" |\
+    perl -pe "s/[^a-z]o\.k\.?/ OK /gi" |\
+    perl -pe "s/[^a-z]p\.e\.?/ PE /gi" |\
+    perl -pe "s/[^a-z]ph\.d\.?/ PHD /gi" |\
+    perl -pe "s/[^a-z]p\.s[\.,\-:\s]*/ PS : /gi" |\
+    perl -pe "s/[^a-z]s\.w\.a\.t\.?/ SWAT /gi" |\
+    perl -pe "s/[^a-z]t\.v\.?/ TV /gi" |\
+    perl -pe "s/[^a-z](u\.)?g\.a\.?/ UGA /gi" |\
+    perl -pe "s/[^a-z]u\.k\.?/ UK /gi" |\
+    perl -pe "s/[^a-z]u\.n\.?/ UN /gi" |\
+    perl -pe "s/[^a-z]u\.s\.a\.?/ USA /gi" |\
+    perl -pe "s/[^a-z]u\.s\.?/ US /gi" |\
+    perl -pe "s/[^a-z]w\.r\.t\.?/ WRT /gi" |\
+    perl -pe "s/[^a-z]w\.t\.f\.?/ WTF /gi" |\
+
+    # common mispellings
+    perl -pe "s/w(o*0+)t/ WOOT /g" |\
+    perl -pe "s/1ce/ ONCE /g" |\
+    perl -pe "s/2dae/ TODAY /g" |\
+    perl -pe "s/sk8ter/ SKATER /g" |\
+    perl -pe "s/l8r/ LATER /g" |\
+    perl -pe "s/\bb(c[ou]z)/ BECAUSE /g" |\
+    perl -pe "s/\bb(cause)/ BECAUSE /g" |\
+    perl -pe "s/\b'?(c[ou]z)/ CAUSE /g" |\
+    perl -pe "s/\b'?(cause)/ CAUSE /g" |\
+    perl -pe "s/\b2(day|gether|morrow|moro|night|nite)/ TO\U\1\E /g" |\
+    perl -pe "s/\b4(bid|ever|get|got|ward)/ FOR\U\1\E /g" |\
+
+    # other common abbreviations
+    perl -pe "s/\sb\/c\s/ BECAUSE /g" |\
+    perl -pe "s/\sj\/k\s/ JOKE /g" |\
+    perl -pe "s/\sw\/o(ut)?\s/ WITHOUT /g" |\
+    perl -pe "s/\sw\/\s/ WITH /g" |\
+    perl -pe "s/\sw\/e\s/ WHATEVER /g" |\
+
+    # words elongated with spaces or punctuations
+    perl -pe "s/[a-z]((?![\-])\p{P})([a-z]\1)+[a-z]\1?/ PUNCTSEPARATED /g" |\
+    perl -pe "s/[a-z](\s[a-z]){3,}/ SPACESEPARATED /g" |\
+
+    # numbers
+    perl -pe "s/\b(?<!,)[\+\-]?[0-9]+([\.,][0-9]+)*(\/[0-9]+([\.,][0-9]+)*)?/ NUMBER /g" |\
+
+    # adds spaces around punctuations
+    perl -pe "s/(?!SMILEY)([[:punct:]]+)/ \1 /g" |\
+
+
+    # reddit formating
+    #perl -pe "s/\^+/ /g" |\
+    #perl -pe "s/\*+/ /g" |\
+    #perl -pe "s/\~+/ /g" |\
+    #perl -pe "s/&gt;([^&]+)&lt;/ \1 /g" |\
+
+    # char encodings
+    #perl -pe "s/&gt;/ > /g" |\
+    #perl -pe "s/&lt;/ < /g" |\
+    #perl -pe "s/&amp;#039;/ quote /g" |\
+    #perl -pe "s/&amp;quot;/ quote /g" |\
+    #perl -pe "s/&amp;nbsp;/ /g" |\
+    #perl -pe "s/&amp;&amp;/&/g" |\
+    #perl -pe "s/&amp;/&/g" |\
+    #perl -pe "s/%2F/\//g" |\
+
+    # output to file
+    cat > ./out/data_${dataset}.out
+
+
+
+
+if false; then
+
+
+    if true; then
+        # separates "to have" related contractions
+        search="\b(i|you|we|they|would|should|could|might|must|who)[';]ve\b"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/to_have.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 have/g")"
+        >&2 echo "--> TO_HAVE ended successfully"
+    fi
+
+
+    if true; then
+        # separates "to be" related contractions
+        search="\bi[';]m"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/to_be.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/i m/g")"
+        #result="$(echo "${result}" | cat | perl -pe "s/${search}/i am/g")"
+        
+        search="\b(you|we|they)[';]re"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/to_be.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 re/g")"
+        #result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 are/g")"
+
+        search="\b(it|that|he|she|there|what|let|here|who)[';]s"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/to_be.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 s/g")"
+        #result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 is/g")"
+
+        >&2 echo "--> TO_BE ended successfully"
+    fi
+
+
+    if true; then
+        # separates other common contractions
+        search="\b(i|you|he|she|we|they|it|that|there|how|where|who|what|why)[';]d"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/contractions.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 d/g")"
+        #result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 would/g")"
+
+        search="\b(i|you|he|she|we|they|it|that|there|this|who)[';]ll"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 ll/g")"
+        #result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 will/g")"
+
+        search="\b(do|did|does|has|have|had|is|are|was|were|could|would|should|must)n[';]t"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\1n t/g")"
+        #result="$(echo "${result}" | cat | perl -pe "s/${search}/\1 not/g")"
+
+        search="\bcan[';]t"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\can t/g")"
+        #result="$(echo "${result}" | cat | perl -pe "s/${search}/\can not/g")"
+
+        search="\bwon[';]t"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\won t/g")"
+        #result="$(echo "${result}" | cat | perl -pe "s/${search}/\will not/g")"
+
+        search="\bain[';]t"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\ain t/g")"
+        #result="$(echo "${result}" | cat | perl -pe "s/${search}/\am not/g")"
+
+        search="\bhavn[';]t"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/contractions.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\havn t/g")"
+        #result="$(echo "${result}" | cat | perl -pe "s/${search}/\have not/g")"
+
+        >&2 echo "--> CONTRACTIONS ended successfully"
+    fi
+
+
+    if true; then
+        # separates possession marks from words
+        search="[';]s\b"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/possessions.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/ POSSESSION /g")"
+
+        >&2 echo "--> POSSESSIONS ended successfully"
+    fi
+
+
+    if true; then
+        # common alternate spellings
+        search="w(o*0+)t"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/alternates.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/WOOT/g")"
+
+        search="1ce"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/ONCE/g")"
+
+        search="2dae"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/TODAY/g")"
+
+        search="sk8ter"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/SKATER/g")"
+
+        search="l8r"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/LATER/g")"
+
+        search="\b[b']?(c[ou]z)\b"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/BECAUSE/g")"
+
+        search="\b2(day|gether|morrow|moro|night|nite)"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/TO\U\1/g")"
+
+        search="\b4(bid|ever|get|got|ward)"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/alternates.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/FOR\U\1/g")"
+
+        >&2 echo "--> ALTERNATES ended successfully"
+    fi
+
+
+    if true; then
+        # replaces smileys with SMILEYsomething token
+        search="[:;][\-\^\'o]?([^[:space:]\'\"\>\-_\.:;0-9a-z]|[opds])(?![a-z0-9])"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/smileys.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/ SMILEY\1 /g")"
+        >&2 echo "--> SMILEYS ended successfully"
+    fi
+
+
+    if true; then
+        # shorten repeated sequence of characters (not including spaces) to two repetitions
+        search="([^ ]{2,})\1{2,}"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" > $folder/repeated_seqs.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\1\1/g")"
+
+        search="([a-z0-9])\1*(?!\1)([a-z0-9])\2*(\1+\2+){2,}(\1|\2)*"
+        echo "${result}" | grep -P -o "[^ ]*${search}[^ ]*" >> $folder/repeated_seqs.txt
+        result="$(echo "${result}" | cat | perl -pe "s/${search}/\1\2\1\2/g")"
+
+        >&2 echo "--> REPEATED_SEQS ended successfully"
+    fi
+
+
+    # adds spaces around punctuations
+    result="$(echo "${result}" | cat | perl -pe "s/(?!SMILEY)([[:punct:]])/ \1 /g")"
+
+    # removes extra spaces
+    result="$(echo "${result}" | cat | perl -pe "s/ +/ /g")"
+    result="$(echo "${result}" | cat | perl -pe "s/^ //g")"
+    result="$(echo "${result}" | cat | perl -pe "s/\" /\"/g")"
+    result="$(echo "${result}" | cat | perl -pe "s/\", ([0-2])/\"\,\1/g")"
+
+
+    ########################
+    # END OF PREPROCESSING #
+    ########################
+
+    # output to file
+    cat > ./out/data_${dataset}.out
+fi
