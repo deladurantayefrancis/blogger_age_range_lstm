@@ -2,9 +2,9 @@
 
 Le corpus est composé 512629 billets de blogs provenant de trois tranches d'âge.
 
-10 à 19 ans : 35.1%
-20 à 29 ans : 46.9%
-30 ans et plus : 17.9%
+- 10 à 19 ans : 35.1%
+- 20 à 29 ans : 46.9%
+- 30 ans et plus : 17.9%
 
 ## Prétraitement
 
