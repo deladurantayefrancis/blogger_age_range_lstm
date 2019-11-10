@@ -19,15 +19,7 @@ def store_as_text(data, file_out, folder='./data/'):
 	path = folder + file_out
 	with open(path, 'w+') as file:
 		print(len(data))
-		for i, d in enumerate(tqdm(data)):
-			"""
-			d = re.sub(r'\r', ' ', d)
-			d = re.sub(r'\n', ' ', d)
-			d = re.sub(r'\t', ' ', d)
-			d = re.sub(r' +', ' ', d)
-			if d == ' ':
-				print(i)
-			"""
+		for d in tqdm(data):
 			file.write(d + '\n')
 
 def store_as_csv(file_in, file_out, labels=None, folder='./out/'):
@@ -43,7 +35,7 @@ def store_as_csv(file_in, file_out, labels=None, folder='./out/'):
 		df = pd.DataFrame({BLOG: preprocessed_data})
 
 	path = folder + file_out
-	df.to_csv(path, header=False)
+	df.to_csv(path, header=False, index=False)
 
 
 if __name__ == "__main__":
