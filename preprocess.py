@@ -40,19 +40,25 @@ def store_as_csv(file_in, file_out, labels=None, folder='./out/'):
 
 if __name__ == "__main__":
 
+	file_train = sys.argv[1]
+	file_test = sys.argv[2]
+
 	if len(sys.argv) > 1:
-		n_lines = int(sys.argv[1])
+		n_lines = int(sys.argv[3])
 	else:
-		n_lines = 10000
+		n_lines = 100000
+
+	os.system('mkdir -p data')
+	os.system('mkdir -p out')
 	
 	# train data
-	data, labels = load_data('train_posts.csv', has_labels=True)
+	data, labels = load_data(file_train, has_labels=True)
 	store_as_text(data, 'data_train.txt')
 	os.system(f'bash "script-preprocess" train {n_lines}')
 	store_as_csv('data_train.out', 'data_train_preprocessed.csv', labels=labels[:n_lines])
 	
 	# test data
-	data = load_data('test_split01.csv')
+	data = load_data(file_test)
 	store_as_text(data, 'data_test.txt')
 	os.system(f'bash "script-preprocess" test {n_lines}')
 	store_as_csv('data_test.out', 'data_test_preprocessed.csv')

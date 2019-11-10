@@ -11,7 +11,7 @@ Le corpus est composé 512629 billets de blogs provenant de trois tranches d'âg
 Pour prétraiter les données exécutez:
 
 ```bash
-python preprocess.py <nombre_lignes_a_pretraiter>
+python preprocess.py <path_to_file_train> <path_to_file_test> <nombre_lignes_a_pretraiter>
 ```
 
 ## Lancer l'entraîner du modèle Bayes Naïf
