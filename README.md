@@ -20,6 +20,14 @@ python preprocess.py <path_to_file_train> <path_to_file_test> <nombre_lignes_a_p
 python src/Naive_Bayes.py
 ```
 
+## Classifieur LSTM
+
+Le classifieur LSTM utilisé se trouve en format .ipynb dans le dossier src/.
+
+## Classifieur BERT
+
+Le classifieur BERT utilisé se trouve en format .ipynb dans le dossier src/.
+
 ## Auteur
 
 Francis de Ladurantaye
