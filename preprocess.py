@@ -43,7 +43,7 @@ if __name__ == "__main__":
 	file_train = sys.argv[1]
 	file_test = sys.argv[2]
 
-	if len(sys.argv) > 1:
+	if len(sys.argv) > 3:
 		n_lines = int(sys.argv[3])
 	else:
 		n_lines = 100000
